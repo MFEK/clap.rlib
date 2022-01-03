@@ -51,7 +51,7 @@ pub fn gen_for_enum(name: &Ident, attrs: &[Attribute], e: &DataEnum) -> TokenStr
     let to_possible_value = gen_to_possible_value(&lits);
 
     quote! {
-        #[allow(dead_code, unreachable_code, unused_variables)]
+        #[allow(dead_code, unreachable_code, unused_variables, unused_braces)]
         #[allow(
             clippy::style,
             clippy::complexity,
@@ -114,7 +114,7 @@ fn gen_to_possible_value(lits: &[(TokenStream, Ident)]) -> TokenStream {
     let (lit, variant): (Vec<TokenStream>, Vec<Ident>) = lits.iter().cloned().unzip();
 
     quote! {
-        fn to_possible_value<'a>(&self) -> Option<clap::PossibleValue<'a>> {
+        fn to_possible_value<'a>(&self) -> ::std::option::Option<clap::PossibleValue<'a>> {
             match self {
                 #(Self::#variant => Some(#lit),)*
                 _ => None

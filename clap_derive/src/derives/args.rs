@@ -23,7 +23,7 @@ use proc_macro_error::{abort, abort_call_site};
 use quote::{format_ident, quote, quote_spanned};
 use syn::{
     punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Data, DataStruct,
-    DeriveInput, Field, Fields, Type,
+    DeriveInput, Field, Fields, Generics, Type,
 };
 
 pub fn derive_args(input: &DeriveInput) -> TokenStream {
@@ -35,21 +35,27 @@ pub fn derive_args(input: &DeriveInput) -> TokenStream {
         Data::Struct(DataStruct {
             fields: Fields::Named(ref fields),
             ..
-        }) => gen_for_struct(ident, &fields.named, &input.attrs),
+        }) => gen_for_struct(ident, &input.generics, &fields.named, &input.attrs),
         Data::Struct(DataStruct {
             fields: Fields::Unit,
             ..
-        }) => gen_for_struct(ident, &Punctuated::<Field, Comma>::new(), &input.attrs),
+        }) => gen_for_struct(
+            ident,
+            &input.generics,
+            &Punctuated::<Field, Comma>::new(),
+            &input.attrs,
+        ),
         _ => abort_call_site!("`#[derive(Args)]` only supports non-tuple structs"),
     }
 }
 
 pub fn gen_for_struct(
     struct_name: &Ident,
+    generics: &Generics,
     fields: &Punctuated<Field, Comma>,
     attrs: &[Attribute],
 ) -> TokenStream {
-    let from_arg_matches = gen_from_arg_matches_for_struct(struct_name, fields, attrs);
+    let from_arg_matches = gen_from_arg_matches_for_struct(struct_name, generics, fields, attrs);
 
     let attrs = Attrs::from_struct(
         Span::call_site(),
@@ -62,10 +68,12 @@ pub fn gen_for_struct(
     let augmentation = gen_augment(fields, &app_var, &attrs, false);
     let augmentation_update = gen_augment(fields, &app_var, &attrs, true);
 
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
     quote! {
         #from_arg_matches
 
-        #[allow(dead_code, unreachable_code, unused_variables)]
+        #[allow(dead_code, unreachable_code, unused_variables, unused_braces)]
         #[allow(
             clippy::style,
             clippy::complexity,
@@ -78,7 +86,7 @@ pub fn gen_for_struct(
             clippy::suspicious_else_formatting,
         )]
         #[deny(clippy::correctness)]
-        impl clap::Args for #struct_name {
+        impl #impl_generics clap::Args for #struct_name #ty_generics #where_clause {
             fn augment_args<'b>(#app_var: clap::App<'b>) -> clap::App<'b> {
                 #augmentation
             }
@@ -91,6 +99,7 @@ pub fn gen_for_struct(
 
 pub fn gen_from_arg_matches_for_struct(
     struct_name: &Ident,
+    generics: &Generics,
     fields: &Punctuated<Field, Comma>,
     attrs: &[Attribute],
 ) -> TokenStream {
@@ -105,8 +114,10 @@ pub fn gen_from_arg_matches_for_struct(
     let constructor = gen_constructor(fields, &attrs);
     let updater = gen_updater(fields, &attrs, true);
 
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
     quote! {
-        #[allow(dead_code, unreachable_code, unused_variables)]
+        #[allow(dead_code, unreachable_code, unused_variables, unused_braces)]
         #[allow(
             clippy::style,
             clippy::complexity,
@@ -119,13 +130,13 @@ pub fn gen_from_arg_matches_for_struct(
             clippy::suspicious_else_formatting,
         )]
         #[deny(clippy::correctness)]
-        impl clap::FromArgMatches for #struct_name {
-            fn from_arg_matches(__clap_arg_matches: &clap::ArgMatches) -> Result<Self, clap::Error> {
+        impl #impl_generics clap::FromArgMatches for #struct_name #ty_generics #where_clause {
+            fn from_arg_matches(__clap_arg_matches: &clap::ArgMatches) -> ::std::result::Result<Self, clap::Error> {
                 let v = #struct_name #constructor;
                 ::std::result::Result::Ok(v)
             }
 
-            fn update_from_arg_matches(&mut self, __clap_arg_matches: &clap::ArgMatches) -> Result<(), clap::Error> {
+            fn update_from_arg_matches(&mut self, __clap_arg_matches: &clap::ArgMatches) -> ::std::result::Result<(), clap::Error> {
                 #updater
                 ::std::result::Result::Ok(())
             }
@@ -291,8 +302,7 @@ pub fn gen_augment(
                     Ty::OptionVec => quote_spanned! { ty.span()=>
                         .takes_value(true)
                         .value_name(#value_name)
-                        .multiple_values(true)
-                        .min_values(0)
+                        .multiple_occurrences(true)
                         #possible_values
                         #validator
                         #allow_invalid_utf8
@@ -302,7 +312,7 @@ pub fn gen_augment(
                         quote_spanned! { ty.span()=>
                             .takes_value(true)
                             .value_name(#value_name)
-                            .multiple_values(true)
+                            .multiple_occurrences(true)
                             #possible_values
                             #validator
                             #allow_invalid_utf8
@@ -315,11 +325,10 @@ pub fn gen_augment(
 
                     Ty::Other if flag => quote_spanned! { ty.span()=>
                         .takes_value(false)
-                        .multiple_values(false)
                     },
 
                     Ty::Other => {
-                        let required = !attrs.has_method("default_value") && !override_required;
+                        let required = attrs.find_default_method().is_none() && !override_required;
                         quote_spanned! { ty.span()=>
                             .takes_value(true)
                             .value_name(#value_name)
@@ -547,7 +556,7 @@ fn gen_parsers(
         FromFlag => (quote!(), quote!(), func.clone()),
     };
     if attrs.is_enum() {
-        let ci = attrs.case_insensitive();
+        let ci = attrs.ignore_case();
 
         parse = quote_spanned! { convert_type.span()=>
             |s| <#convert_type as clap::ArgEnum>::from_str(s, #ci).map_err(|err| clap::Error::raw(clap::ErrorKind::ValueValidation, format!("Invalid value for {}: {}", #name, err)))
@@ -593,7 +602,7 @@ fn gen_parsers(
         Ty::OptionVec => quote_spanned! { ty.span()=>
             if #arg_matches.is_present(#name) {
                 Some(#arg_matches.#values_of(#name)
-                    .map(|v| v.map::<Result<#convert_type, clap::Error>, _>(#parse).collect::<Result<Vec<_>, clap::Error>>())
+                    .map(|v| v.map::<::std::result::Result<#convert_type, clap::Error>, _>(#parse).collect::<::std::result::Result<Vec<_>, clap::Error>>())
                     .transpose()?
                     .unwrap_or_else(Vec::new))
             } else {
@@ -604,7 +613,7 @@ fn gen_parsers(
         Ty::Vec => {
             quote_spanned! { ty.span()=>
                 #arg_matches.#values_of(#name)
-                    .map(|v| v.map::<Result<#convert_type, clap::Error>, _>(#parse).collect::<Result<Vec<_>, clap::Error>>())
+                    .map(|v| v.map::<::std::result::Result<#convert_type, clap::Error>, _>(#parse).collect::<::std::result::Result<Vec<_>, clap::Error>>())
                     .transpose()?
                     .unwrap_or_else(Vec::new)
             }

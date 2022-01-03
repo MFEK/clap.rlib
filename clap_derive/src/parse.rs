@@ -9,7 +9,19 @@ use syn::{
     Attribute, Expr, ExprLit, Ident, Lit, LitBool, LitStr, Token,
 };
 
+pub fn parse_clap_attributes(all_attrs: &[Attribute]) -> Vec<ClapAttr> {
+    all_attrs
+        .iter()
+        .filter(|attr| attr.path.is_ident("clap") || attr.path.is_ident("structopt"))
+        .flat_map(|attr| {
+            attr.parse_args_with(Punctuated::<ClapAttr, Token![,]>::parse_terminated)
+                .unwrap_or_abort()
+        })
+        .collect()
+}
+
 #[allow(clippy::large_enum_variant)]
+#[derive(Clone)]
 pub enum ClapAttr {
     // single-identifier attributes
     Short(Ident),
@@ -266,18 +278,7 @@ fn raw_method_suggestion(ts: ParseBuffer) -> String {
     } else {
         "if you need to call some method from `clap::Arg/App` \
          you should use raw method, see \
-         https://docs.rs/structopt/0.3/structopt/#raw-methods"
+         https://github.com/clap-rs/clap/blob/master/examples/derive_ref/README.md#raw-attributes"
             .into()
     }
-}
-
-pub fn parse_clap_attributes(all_attrs: &[Attribute]) -> Vec<ClapAttr> {
-    all_attrs
-        .iter()
-        .filter(|attr| attr.path.is_ident("clap"))
-        .flat_map(|attr| {
-            attr.parse_args_with(Punctuated::<ClapAttr, Token![,]>::parse_terminated)
-                .unwrap_or_abort()
-        })
-        .collect()
 }
