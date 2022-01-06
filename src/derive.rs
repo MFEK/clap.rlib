@@ -20,7 +20,7 @@ use std::ffi::OsString;
 /// See also [`Subcommand`] and [`Args`].
 ///
 /// See the
-/// [derive reference](https://github.com/clap-rs/clap/blob/v3.0.1/examples/derive_ref/README.md)
+/// [derive reference](https://github.com/clap-rs/clap/blob/v3.0.5/examples/derive_ref/README.md)
 /// for attributes and best practices.
 ///
 /// **NOTE:** Deriving requires the `derive` feature flag
@@ -168,7 +168,7 @@ pub trait Parser: FromArgMatches + IntoApp + Sized {
     /// [`Parser`])
     #[deprecated(
         since = "3.0.0",
-        note = "`StructOpt::clap` is replaced with `IntoApp::into_app` (derived as part of `Parser`)"
+        note = "`StructOpt::from_clap` is replaced with `FromArgMatches::from_arg_matches` (derived as part of `Parser`)"
     )]
     fn from_clap(matches: &ArgMatches) -> Self {
         <Self as FromArgMatches>::from_arg_matches(matches).unwrap()
@@ -285,7 +285,7 @@ pub trait FromArgMatches: Sized {
 /// - `Variant(ChildArgs)`: No attribute is used with enum variants that impl `Args`.
 ///
 /// See the
-/// [derive reference](https://github.com/clap-rs/clap/blob/v3.0.1/examples/derive_ref/README.md)
+/// [derive reference](https://github.com/clap-rs/clap/blob/v3.0.5/examples/derive_ref/README.md)
 /// for attributes and best practices.
 ///
 /// **NOTE:** Deriving requires the `derive` feature flag
@@ -329,7 +329,7 @@ pub trait Args: FromArgMatches + Sized {
 ///   `Subcommand`.
 ///
 /// See the
-/// [derive reference](https://github.com/clap-rs/clap/blob/v3.0.1/examples/derive_ref/README.md)
+/// [derive reference](https://github.com/clap-rs/clap/blob/v3.0.5/examples/derive_ref/README.md)
 /// for attributes and best practices.
 ///
 /// **NOTE:** Deriving requires the `derive` feature flag
@@ -373,7 +373,7 @@ pub trait Subcommand: FromArgMatches + Sized {
 /// - Allowing using the `#[clap(default_value_t)]` attribute without implementing `Display`.
 ///
 /// See the
-/// [derive reference](https://github.com/clap-rs/clap/blob/v3.0.1/examples/derive_ref/README.md)
+/// [derive reference](https://github.com/clap-rs/clap/blob/v3.0.5/examples/derive_ref/README.md)
 /// for attributes and best practices.
 ///
 /// **NOTE:** Deriving requires the `derive` feature flag

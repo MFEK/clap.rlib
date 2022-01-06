@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
 
+## [3.0.5] - 2022-01-05
+
+### Fixes
+
+- Provide hack to workaround [inability to detect external subcommands aliasing when escaped](https://github.com/clap-rs/clap/issues/3263) (#3264)
+
+**docs:**
+- Cleaned up code blocks in tutorials (#3261)
+- Clean up quotes in `ArgMatches` asserts
+- List correct replacement for deprecated `Parser::from_clap` (#3257)
+
+## [3.0.4] - 2022-01-04
+
+### Features
+
+- For very limited cases, like `cargo`, expose `ArgMatches::is_valid_arg` to avoid panicing on undefined arguments
+
+## [3.0.3] - 2022-01-04
+
+### Fixes
+
+- Specify cause of debug assert failure
+
+## [3.0.2] - 2022-01-04
+
+### Fixes
+
+- Ignore `Last` when checking hyphen values (see #3249 for details)
+- Help catch bugs with `#[must_use]`
+
 ## [3.0.1] - 2022-01-03
 
 ### Fixes
@@ -148,6 +178,8 @@ Subtle changes (i.e. compiler won't catch):
 - `ArgMatches::is_present` no longer checks subcommand names
 - Some env variable values are now considered false for flags, not just "not-present" ([clap-rs/clap#2539](https://github.com/clap-rs/clap/issues/2539))
 - Changed `...`s meaning in usage parser.  Before, it always meant `multiple` which is still true for `--option [val]...`.  Now `[name]... --option [val]` results in `ArgSettings::MultipleOccurrences`.
+- Usage exit code changed from `1` to `2` ([clap-rs/clap#1327](https://github.com/clap-rs/clap/issues/1327))
+- Reject `--foo=bar` when `takes_value(false)` ([clap-rs/clap#1543](https://github.com/clap-rs/clap/issues/1543))
 
 Easier to catch changes:
 - When using `no-default-features`, you now have to specify the `std` feature (reserved for future work)
@@ -3020,7 +3052,11 @@ Minimum version of Rust is now v1.13.0 (Stable)
 * **arg**  allow lifetimes other than 'static in arguments ([9e8c1fb9](https://github.com/clap-rs/clap/commit/9e8c1fb9406f8448873ca58bab07fe905f1551e5))
 
 <!-- next-url -->
-[Unreleased]: https://github.com/clap-rs/clap/compare/v3.0.1...HEAD
+[Unreleased]: https://github.com/clap-rs/clap/compare/v3.0.5...HEAD
+[3.0.5]: https://github.com/clap-rs/clap/compare/v3.0.4...v3.0.5
+[3.0.4]: https://github.com/clap-rs/clap/compare/v3.0.3...v3.0.4
+[3.0.3]: https://github.com/clap-rs/clap/compare/v3.0.2...v3.0.3
+[3.0.2]: https://github.com/clap-rs/clap/compare/v3.0.1...v3.0.2
 [3.0.1]: https://github.com/clap-rs/clap/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/clap-rs/clap/compare/v2.34.0...v3.0.0
 [2.34.0]: https://github.com/clap-rs/clap/compare/v2.33.4...v2.34.0
